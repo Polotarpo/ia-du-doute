@@ -1,0 +1,39 @@
+from flask import Flask, request, jsonify, send_file
+import graphviz
+import tempfile
+import uuid
+import os
+
+app = Flask(__name__)
+
+@app.route('/generate', methods=['POST'])
+def generate_mind_map():
+    data = request.get_json()
+    summary = data.get('summary_text', '')
+
+    # Séparation des noeuds de la carte par ligne ou point
+    nodes = [line.strip() for line in summary.split('\n') if line.strip()]
+
+    dot = graphviz.Digraph(comment='Carte mentale')
+    root_id = str(uuid.uuid4())[:8]
+    dot.node(root_id, "Idée centrale")
+
+    for node in nodes:
+        child_id = str(uuid.uuid4())[:8]
+        dot.node(child_id, node)
+        dot.edge(root_id, child_id)
+
+    temp_dir = tempfile.gettempdir()
+    output_path = os.path.join(temp_dir, 'mindmap.png')
+    dot.render(output_path, format='png', cleanup=True)
+
+    return jsonify({
+        "image_url": f"https://mindmap-render.onrender.com/static/mindmap.png"
+    })
+
+@app.route('/static/mindmap.png')
+def serve_image():
+    return send_file(tempfile.gettempdir() + '/mindmap.png', mimetype='image/png')
+
+if __name__ == '__main__':
+    app.run(debug=True)
